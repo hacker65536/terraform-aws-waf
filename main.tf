@@ -1,7 +1,9 @@
-# - terraform managed waf -
+# AWS WAF Web ACL managed by Terraform
+# This resource is created only when wafcharm_managed is set to false
+# It creates a standard AWS WAF Web ACL with customizable rules
 
 resource "aws_wafv2_web_acl" "terraform_managed" {
-  count       = var.wafcharm_managed == false ? 1 : 0
+  count       = !var.wafcharm_managed ? 1 : 0
   name        = var.name
   description = var.description
   scope       = var.scope
@@ -17,69 +19,139 @@ resource "aws_wafv2_web_acl" "terraform_managed" {
     }
   }
 
-  rule {
-    name     = "rule-1"
-    priority = 1
-
-    override_action {
-      count {}
-    }
-
-    statement {
-      managed_rule_group_statement {
-        name        = "AWSManagedRulesCommonRuleSet"
-        vendor_name = "AWS"
-
-        rule_action_override {
-          action_to_use {
-            count {}
-          }
-
-          name = "SizeRestrictions_QUERYSTRING"
-        }
-
-        rule_action_override {
-          action_to_use {
-            count {}
-          }
-
-          name = "NoUserAgent_HEADER"
-        }
-
-        scope_down_statement {
-          geo_match_statement {
-            country_codes = ["US", "NL"]
+  dynamic "rule" {
+    for_each = length(var.rules) > 0 ? var.rules : [{
+      name            = "rule-1"
+      priority        = 1
+      override_action = "count"
+      statement = {
+        managed_rule_group_statement = {
+          name        = "AWSManagedRulesCommonRuleSet"
+          vendor_name = "AWS"
+          rule_action_overrides = [
+            {
+              name   = "SizeRestrictions_QUERYSTRING"
+              action = "count"
+            },
+            {
+              name   = "NoUserAgent_HEADER"
+              action = "count"
+            }
+          ]
+          scope_down_statement = {
+            geo_match_statement = {
+              country_codes = var.default_country_codes
+            }
           }
         }
       }
-    }
+      visibility_config = {
+        cloudwatch_metrics_enabled = false
+        metric_name                = "rule-metric"
+        sampled_requests_enabled   = false
+      }
+    }]
 
-    visibility_config {
-      cloudwatch_metrics_enabled = false
-      metric_name                = "friendly-rule-metric-name"
-      sampled_requests_enabled   = false
+    content {
+      name     = rule.value.name
+      priority = rule.value.priority
+
+      dynamic "override_action" {
+        for_each = lookup(rule.value, "override_action", null) != null ? [rule.value.override_action] : []
+        content {
+          count {}
+        }
+      }
+
+      dynamic "action" {
+        for_each = lookup(rule.value, "action", null) != null ? [rule.value.action] : []
+        content {
+          dynamic "allow" {
+            for_each = action.value == "allow" ? [1] : []
+            content {}
+          }
+          dynamic "block" {
+            for_each = action.value == "block" ? [1] : []
+            content {}
+          }
+          dynamic "count" {
+            for_each = action.value == "count" ? [1] : []
+            content {}
+          }
+        }
+      }
+
+      statement {
+        dynamic "managed_rule_group_statement" {
+          for_each = lookup(rule.value.statement, "managed_rule_group_statement", null) != null ? [rule.value.statement.managed_rule_group_statement] : []
+          content {
+            name        = managed_rule_group_statement.value.name
+            vendor_name = managed_rule_group_statement.value.vendor_name
+
+            dynamic "rule_action_override" {
+              for_each = lookup(managed_rule_group_statement.value, "rule_action_overrides", [])
+              content {
+                name = rule_action_override.value.name
+                action_to_use {
+                  dynamic "count" {
+                    for_each = rule_action_override.value.action == "count" ? [1] : []
+                    content {}
+                  }
+                  dynamic "allow" {
+                    for_each = rule_action_override.value.action == "allow" ? [1] : []
+                    content {}
+                  }
+                  dynamic "block" {
+                    for_each = rule_action_override.value.action == "block" ? [1] : []
+                    content {}
+                  }
+                }
+              }
+            }
+
+            dynamic "scope_down_statement" {
+              for_each = lookup(managed_rule_group_statement.value, "scope_down_statement", null) != null ? [managed_rule_group_statement.value.scope_down_statement] : []
+              content {
+                dynamic "geo_match_statement" {
+                  for_each = lookup(scope_down_statement.value, "geo_match_statement", null) != null ? [scope_down_statement.value.geo_match_statement] : []
+                  content {
+                    country_codes = geo_match_statement.value.country_codes
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      visibility_config {
+        cloudwatch_metrics_enabled = lookup(rule.value.visibility_config, "cloudwatch_metrics_enabled", var.cloudwatch_metrics_enabled)
+        metric_name                = lookup(rule.value.visibility_config, "metric_name", "${rule.value.name}-metric")
+        sampled_requests_enabled   = lookup(rule.value.visibility_config, "sampled_requests_enabled", var.sampled_requests_enabled)
+      }
     }
   }
 
-  tags = {
-    Tag1 = "Value1"
-    Tag2 = "Value2"
-  }
+  tags = var.tags
 
-  token_domains = ["mywebsite.com", "myotherwebsite.com"]
+  token_domains = length(var.token_domains) > 0 ? var.token_domains : null
 
   visibility_config {
-    cloudwatch_metrics_enabled = false
-    metric_name                = "friendly-metric-name"
-    sampled_requests_enabled   = false
+    cloudwatch_metrics_enabled = var.cloudwatch_metrics_enabled
+    metric_name                = var.metric_name
+    sampled_requests_enabled   = var.sampled_requests_enabled
   }
 }
 
 
 
-# - wafcharm managed waf -
+# WAF Charm managed WAF Web ACL
+# AWS WAF Web ACL managed by WAF Charm
+# This resource is created only when wafcharm_managed is set to true
+# It allows for external WAF management while still using Terraform for initial setup
+
 resource "aws_wafv2_web_acl" "wafcharm_managed" {
-  count       = var.wafcharm_managed == true ? 1 : 0
+  count       = var.wafcharm_managed ? 1 : 0
   name        = var.name
   description = var.description
   scope       = var.scope
@@ -100,19 +172,21 @@ resource "aws_wafv2_web_acl" "wafcharm_managed" {
     ignore_changes = [rule]
   }
 
-  token_domains = ["mywebsite.com", "myotherwebsite.com"]
+  token_domains = length(var.token_domains) > 0 ? var.token_domains : null
 
   visibility_config {
-    cloudwatch_metrics_enabled = false
-    metric_name                = "friendly-metric-name"
-    sampled_requests_enabled   = false
+    cloudwatch_metrics_enabled = var.cloudwatch_metrics_enabled
+    metric_name                = var.metric_name
+    sampled_requests_enabled   = var.sampled_requests_enabled
   }
 }
 
 
-# CloudWatch logging module
+# CloudWatch Logs Module
+# Creates and configures a CloudWatch log group for WAF logs
+# Only created when logging_dist_cloudwatch is true
 module "cloudwatch_logging" {
-  count  = var.logging_dist_cloudwatch == true ? 1 : 0
+  count  = var.logging_dist_cloudwatch ? 1 : 0
   source = "./modules/logging_dist_cloudwatch"
 
   name               = var.name
@@ -122,22 +196,32 @@ module "cloudwatch_logging" {
   account_id         = data.aws_caller_identity.current.account_id
 }
 
-# S3 logging module
+# S3 Bucket Module
+# Creates and configures an S3 bucket for WAF logs with optional Intelligent-Tiering
+# Created when either:
+# - logging_dist_s3 is true, or
+# - logging_dist_firehose is true but no existing bucket ARN is provided
 module "s3_logging" {
-  count  = var.logging_dist_s3 == true || (var.logging_dist_firehose == true && var.log_bucket_arn == "") ? 1 : 0
+  count  = var.logging_dist_s3 || (var.logging_dist_firehose && var.log_bucket_arn == "") ? 1 : 0
   source = "./modules/logging_dist_s3"
 
-  name = var.name
+  name                       = var.name
+  bucket_prefix              = var.s3_bucket_prefix
+  enable_intelligent_tiering = var.enable_intelligent_tiering
+  intelligent_tiering_days   = var.intelligent_tiering_days
 }
 
-# Firehose logging module
+# Kinesis Firehose Module
+# Creates and configures a Kinesis Firehose delivery stream for WAF logs
+# The stream will deliver logs to an S3 bucket with customizable buffer settings
+# Only created when logging_dist_firehose is true
 module "firehose_logging" {
-  count  = var.logging_dist_firehose == true ? 1 : 0
+  count  = var.logging_dist_firehose ? 1 : 0
   source = "./modules/logging_dist_firehose"
 
   name                       = var.name
   log_bucket_arn             = var.log_bucket_arn
-  s3_bucket_arn              = var.logging_dist_s3 == true ? module.s3_logging[0].s3_bucket_arn : (var.log_bucket_arn == "" ? module.s3_logging[0].s3_bucket_arn : "")
+  s3_bucket_arn              = var.logging_dist_s3 ? module.s3_logging[0].s3_bucket_arn : (var.log_bucket_arn == "" ? module.s3_logging[0].s3_bucket_arn : "")
   log_bucket_keys            = var.log_bucket_keys
   kms_key_arn                = var.kms_key_arn
   firehose_buffer_interval   = var.firehose_buffer_interval
@@ -148,16 +232,23 @@ module "firehose_logging" {
 
 
 
+# AWS WAF Web ACL Logging Configuration
+# Configures logging for the WAF Web ACL, supporting multiple destination types:
+# - CloudWatch Logs
+# - S3 Bucket
+# - Kinesis Firehose
+# This resource is created only when at least one logging destination is enabled
+
 resource "aws_wafv2_web_acl_logging_configuration" "logging_conf" {
-  count = (var.logging_dist_cloudwatch == true || var.logging_dist_s3 == true || var.logging_dist_firehose == true) ? 1 : 0
+  count = (var.logging_dist_cloudwatch || var.logging_dist_s3 || var.logging_dist_firehose) ? 1 : 0
 
   log_destination_configs = compact([
-    var.logging_dist_cloudwatch == true ? module.cloudwatch_logging[0].cloudwatch_log_group_arn : "",
-    var.logging_dist_s3 == true ? module.s3_logging[0].s3_bucket_arn : "",
-    var.logging_dist_firehose == true ? module.firehose_logging[0].firehose_delivery_stream_arn : ""
+    var.logging_dist_cloudwatch ? module.cloudwatch_logging[0].cloudwatch_log_group_arn : "",
+    var.logging_dist_s3 ? module.s3_logging[0].s3_bucket_arn : "",
+    var.logging_dist_firehose ? module.firehose_logging[0].firehose_delivery_stream_arn : ""
   ])
 
-  resource_arn = var.wafcharm_managed == false ? aws_wafv2_web_acl.terraform_managed[0].arn : aws_wafv2_web_acl.wafcharm_managed[0].arn
+  resource_arn = !var.wafcharm_managed ? aws_wafv2_web_acl.terraform_managed[0].arn : aws_wafv2_web_acl.wafcharm_managed[0].arn
 
   # Optional: Redacted fields configuration
   dynamic "redacted_fields" {

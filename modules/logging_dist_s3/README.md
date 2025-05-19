@@ -42,6 +42,7 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_bucket_prefix"></a> [bucket\_prefix](#input\_bucket\_prefix) | Prefix for the S3 bucket name | `string` | `"aws-waf-logs-"` | no |
 | <a name="input_enable_intelligent_tiering"></a> [enable\_intelligent\_tiering](#input\_enable\_intelligent\_tiering) | Enable Intelligent-Tiering storage class for logs | `bool` | `true` | no |
 | <a name="input_intelligent_tiering_days"></a> [intelligent\_tiering\_days](#input\_intelligent\_tiering\_days) | Number of days after which logs will be moved to Intelligent-Tiering storage class | `number` | `30` | no |
 | <a name="input_name"></a> [name](#input\_name) | Name of the WAF Web ACL (used for bucket naming) | `string` | n/a | yes |

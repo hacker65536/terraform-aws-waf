@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "log_bucket" {
-  bucket_prefix = "aws-waf-logs-${var.name}-"
+  bucket_prefix = "${var.bucket_prefix}${var.name}-"
 
   lifecycle {
     prevent_destroy = true

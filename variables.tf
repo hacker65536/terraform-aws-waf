@@ -163,3 +163,39 @@ variable "enable_logging_filter" {
   default     = false
   description = "(Optional) Whether to enable logging filters to selectively log requests."
 }
+
+variable "enable_intelligent_tiering" {
+  type        = bool
+  description = "(Optional) Enable Intelligent-Tiering storage class for logs in S3"
+  default     = true
+}
+
+variable "intelligent_tiering_days" {
+  type        = number
+  description = "(Optional) Number of days after which logs will be moved to Intelligent-Tiering storage class"
+  default     = 30
+}
+
+variable "token_domains" {
+  type        = list(string)
+  description = "(Optional) Domain names that you want to associate with the web ACL for automatic token handling."
+  default     = []
+}
+
+variable "metric_name" {
+  type        = string
+  description = "(Required) A friendly name of the CloudWatch metric for the WebACL."
+  default     = "waf-web-acl-metric"
+}
+
+variable "default_country_codes" {
+  type        = list(string)
+  description = "(Optional) Default list of country codes to use in geo match statements when not specified in rules"
+  default     = ["US", "NL"]
+}
+
+variable "s3_bucket_prefix" {
+  type        = string
+  description = "(Optional) Prefix for the S3 bucket name used for logs"
+  default     = "aws-waf-logs-"
+}

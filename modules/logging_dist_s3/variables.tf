@@ -14,3 +14,9 @@ variable "intelligent_tiering_days" {
   description = "Number of days after which logs will be moved to Intelligent-Tiering storage class"
   default     = 30
 }
+
+variable "bucket_prefix" {
+  type        = string
+  description = "Prefix for the S3 bucket name"
+  default     = "aws-waf-logs-"
+}

@@ -50,6 +50,18 @@ terraform-docs markdown table --output-file README.md --output-mode inject ./mod
 terraform-docs markdown table --output-file README.md --output-mode inject ./modules/logging_dist_firehose
 ```
 
+## Code Quality Features
+
+This module implements several best practices for Terraform code quality:
+
+1. **Version Constraints**: Proper version constraints for Terraform and AWS provider
+2. **Simplified Boolean Expressions**: Direct boolean values instead of comparison operators where appropriate
+3. **Dynamic Resource Creation**: Uses Terraform's dynamic blocks for flexible rule configuration
+4. **Improved Naming**: Consistent and descriptive variable and resource naming
+5. **Parameterization**: Avoids hardcoded values with configurable variables
+6. **Intelligent Storage**: S3 bucket with optional Intelligent-Tiering for cost optimization
+7. **Comprehensive Documentation**: Clear descriptions for all variables and resources
+8. **Code Modularity**: Separated logging functionality into dedicated submodules
 
 ## Usage
 
@@ -141,7 +153,10 @@ module "waf_firehose" {
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
-No requirements.
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.0.0 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 4.0.0 |
 
 ## Providers
 
@@ -174,10 +189,13 @@ No requirements.
 | <a name="input_cloudwatch_log_class"></a> [cloudwatch\_log\_class](#input\_cloudwatch\_log\_class) | (Optional) Log Class for CloudWatch Log Group. Valid values: STANDARD, INFREQUENT\_ACCESS | `string` | `"STANDARD"` | no |
 | <a name="input_cloudwatch_metrics_enabled"></a> [cloudwatch\_metrics\_enabled](#input\_cloudwatch\_metrics\_enabled) | (Optional) If true, associated CloudWatch metrics will be enabled. | `bool` | `true` | no |
 | <a name="input_default_action"></a> [default\_action](#input\_default\_action) | (Required) Action to perform if none of the rules contained in the WebACL match. | `string` | `"allow"` | no |
+| <a name="input_default_country_codes"></a> [default\_country\_codes](#input\_default\_country\_codes) | (Optional) Default list of country codes to use in geo match statements when not specified in rules | `list(string)` | <pre>[<br/>  "US",<br/>  "NL"<br/>]</pre> | no |
 | <a name="input_description"></a> [description](#input\_description) | (Optional) Description of WebACL | `string` | `null` | no |
+| <a name="input_enable_intelligent_tiering"></a> [enable\_intelligent\_tiering](#input\_enable\_intelligent\_tiering) | (Optional) Enable Intelligent-Tiering storage class for logs in S3 | `bool` | `true` | no |
 | <a name="input_enable_logging_filter"></a> [enable\_logging\_filter](#input\_enable\_logging\_filter) | (Optional) Whether to enable logging filters to selectively log requests. | `bool` | `false` | no |
 | <a name="input_firehose_buffer_interval"></a> [firehose\_buffer\_interval](#input\_firehose\_buffer\_interval) | Buffer interval for Firehose in seconds (60-900) | `number` | `300` | no |
 | <a name="input_firehose_buffer_size"></a> [firehose\_buffer\_size](#input\_firehose\_buffer\_size) | Buffer size for Firehose in MB (1-128) | `number` | `128` | no |
+| <a name="input_intelligent_tiering_days"></a> [intelligent\_tiering\_days](#input\_intelligent\_tiering\_days) | (Optional) Number of days after which logs will be moved to Intelligent-Tiering storage class | `number` | `30` | no |
 | <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | (Optional) ARN of KMS key to use for encrypting logs. | `string` | `""` | no |
 | <a name="input_log_bucket_arn"></a> [log\_bucket\_arn](#input\_log\_bucket\_arn) | ARN of an existing S3 bucket to use for logs | `string` | `""` | no |
 | <a name="input_log_bucket_keys"></a> [log\_bucket\_keys](#input\_log\_bucket\_keys) | (Optional) If true, enables KMS key access to S3 bucket for log encryption. | `bool` | `false` | no |
@@ -187,12 +205,15 @@ No requirements.
 | <a name="input_logging_dist_cloudwatch"></a> [logging\_dist\_cloudwatch](#input\_logging\_dist\_cloudwatch) | (Optional) If true, all WebACL traffic will be logged to CloudWatch. | `bool` | `false` | no |
 | <a name="input_logging_dist_firehose"></a> [logging\_dist\_firehose](#input\_logging\_dist\_firehose) | (Optional) If true, all WebACL traffic will be logged to Kinesis Firehose. | `bool` | `false` | no |
 | <a name="input_logging_dist_s3"></a> [logging\_dist\_s3](#input\_logging\_dist\_s3) | (Optional) If true, all WebACL traffic will be logged to S3. | `bool` | `false` | no |
+| <a name="input_metric_name"></a> [metric\_name](#input\_metric\_name) | (Required) A friendly name of the CloudWatch metric for the WebACL. | `string` | `"waf-web-acl-metric"` | no |
 | <a name="input_name"></a> [name](#input\_name) | (Required) Name of the WebACL | `string` | n/a | yes |
 | <a name="input_redact_authorization_header"></a> [redact\_authorization\_header](#input\_redact\_authorization\_header) | (Optional) Whether to redact the 'authorization' header in the logs. | `bool` | `false` | no |
 | <a name="input_rules"></a> [rules](#input\_rules) | (Optional) A list of rules for the WebACL. | `any` | `[]` | no |
+| <a name="input_s3_bucket_prefix"></a> [s3\_bucket\_prefix](#input\_s3\_bucket\_prefix) | (Optional) Prefix for the S3 bucket name used for logs | `string` | `"aws-waf-logs-"` | no |
 | <a name="input_sampled_requests_enabled"></a> [sampled\_requests\_enabled](#input\_sampled\_requests\_enabled) | (Optional) If true, AWS WAF will allow or block HTTP requests based on what WAF considers to be most likely to indicate a matching rule. If false, AWS WAF will only use the rules that are explicitly configured to decide whether to allow or block an HTTP request. | `bool` | `true` | no |
 | <a name="input_scope"></a> [scope](#input\_scope) | (Required) Specifies whether this is for an AWS CloudFront distribution or for a regional application | `string` | n/a | yes |
 | <a name="input_tags"></a> [tags](#input\_tags) | (Optional) Map of key-value pairs to associate with the resource. | `map(string)` | `null` | no |
+| <a name="input_token_domains"></a> [token\_domains](#input\_token\_domains) | (Optional) Domain names that you want to associate with the web ACL for automatic token handling. | `list(string)` | `[]` | no |
 | <a name="input_wafcharm_managed"></a> [wafcharm\_managed](#input\_wafcharm\_managed) | (Optional) If true, the WebACL's rule will be managed by the wafcharm. | `bool` | `false` | no |
 
 ## Outputs
