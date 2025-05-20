@@ -1,24 +1,6 @@
 # AWS WAF Module with Multiple Logging Options
 
-This Terraform module manages AWS### Advanced Firehose Features
-
-## S3 Prefix Timezone Configuration
-
-When using the Firehose logging option, this module supports custom timezone configuration for S3 prefixes. This allows you to format date patterns in S3 prefixes using a timezone other than UTC.
-
-### How It Works
-
-The module sets the `custom_time_zone` parameter in the Firehose's extended S3 configuration. This affects how date patterns like `!{timestamp:yyyy-MM-dd}` are evaluated in the S3 prefixes.
-
-### Benefits
-
-- **Regional Compliance**: Store logs with timestamps matching your region's timezone
-- **Simplified Log Analysis**: Avoid timezone conversion when analyzing logs
-- **Organized Storage**: Create intuitive folder structures based on local time
-
-### Example Usage
-
-```hclon Firewall) resources with flexible logging options.
+This Terraform module manages AWS Web Application Firewall (WAF) resources with flexible logging options.
 
 ## Features
 
@@ -61,6 +43,15 @@ This module includes several examples to demonstrate different use cases:
    - Path: `examples/athena-integration/`
    - Features: Glue Data Catalog, Parquet conversion, partitioning, and sample Athena queries
    
+## Documentation
+
+Detailed documentation is available in the [docs](./docs) directory:
+
+- [Architecture Overview](./docs/ARCHITECTURE.md) - Detailed architecture diagrams and component descriptions
+- [Firehose Processing Pipeline](./docs/firehose-processing.md) - Guide to configuring the Firehose processing pipeline
+- [Athena Integration](./docs/athena-integration.md) - How to integrate WAF logs with AWS Athena
+- [Timezone Configuration](./docs/timezone-config.md) - Guide to timezone configuration for S3 prefixes
+
 ## Documentation Generation
 
 This module uses [terraform-docs](https://github.com/terraform-docs/terraform-docs) to generate documentation. 
@@ -138,9 +129,7 @@ module "waf" {
 
 Valid timezone values follow the IANA Time Zone Database format (e.g., UTC, America/New_York, Europe/London, Asia/Tokyo).
 
-### Custom Processing Configuration
-
-## Firehose Data Processing Pipeline
+### Firehose Data Processing Pipeline
 
 The module supports configuring comprehensive data processing pipelines for the Firehose delivery stream. This allows you to transform, filter, enhance, and convert the WAF logs before they are delivered to S3, making downstream analysis and integration much more powerful.
 
