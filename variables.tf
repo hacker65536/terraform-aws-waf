@@ -134,6 +134,18 @@ variable "log_s3_error_output_prefix" {
   }
 }
 
+variable "log_s3_prefix_timezone" {
+  type        = string
+  description = "(Optional) Timezone for S3 prefix date formatting in Firehose. This sets the custom_time_zone parameter for Firehose delivery, affecting how date patterns in S3 prefixes are evaluated. Valid values include timezones like 'UTC', 'America/New_York', 'Asia/Tokyo', 'Europe/London', etc. See the IANA Time Zone Database for valid values."
+  default     = "UTC"
+}
+
+variable "log_s3_error_output_prefix_timezone" {
+  type        = string
+  description = "(Optional) Timezone for S3 error output prefix date formatting in Firehose. This sets the custom_time_zone parameter for error output paths. Valid values include timezones like 'UTC', 'America/New_York', 'Asia/Tokyo', 'Europe/London', etc. See the IANA Time Zone Database for valid values."
+  default     = "UTC"
+}
+
 variable "log_bucket_keys" {
   type        = bool
   default     = false
@@ -208,5 +220,54 @@ variable "s3_bucket_prefix" {
   type        = string
   description = "(Optional) Prefix for the S3 bucket name used for logs"
   default     = "aws-waf-logs-"
+}
+
+variable "firehose_enable_error_logging" {
+  type        = bool
+  default     = true
+  description = "(Optional) Enable CloudWatch Logs for error logging of the Firehose delivery stream"
+}
+
+variable "firehose_error_log_group_name" {
+  type        = string
+  default     = ""
+  description = "(Optional) CloudWatch Log group name for Firehose error logs. If empty, a default name will be used."
+}
+
+variable "firehose_error_log_retention_days" {
+  type        = number
+  default     = 14
+  description = "(Optional) Number of days to retain Firehose error logs in CloudWatch"
+}
+
+variable "firehose_enable_processing" {
+  type        = bool
+  default     = false
+  description = "(Optional) Enable processing configuration for Firehose delivery stream"
+}
+
+variable "firehose_processors" {
+  type = list(object({
+    type = string
+    parameters = list(object({
+      parameter_name  = string
+      parameter_value = string
+    }))
+  }))
+  description = "(Optional) List of processors for Firehose delivery stream. Each processor has a type and list of parameters."
+  default     = []
+  /*
+  default = [
+    {
+      type = "AppendDelimiterToRecord"
+      parameters = [
+        {
+          parameter_name  = "Delimiter"
+          parameter_value = "\\n"
+        }
+      ]
+    }
+  ]
+  */
 }
 

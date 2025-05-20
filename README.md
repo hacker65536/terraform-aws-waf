@@ -23,6 +23,22 @@ This module has a modular structure with separate submodules for each logging ty
 
 The main module orchestrates these submodules based on the selected logging destination. Due to AWS WAF constraints, only one logging destination can be enabled at a time.
 
+## Available Examples
+
+This module includes several examples to demonstrate different use cases:
+
+1. **Multiple Logging Options**: Demonstrates all three logging destinations
+   - Path: `examples/multiple-logging-options/`
+   - Features: CloudWatch Logs, S3 Bucket, and Kinesis Firehose
+
+2. **Timezone and Processing Configuration**: Shows time zone settings and basic processing
+   - Path: `examples/timezone-test/`
+   - Features: Configuring Asia/Tokyo timezone and metadata extraction
+
+3. **Advanced Firehose Processing**: Demonstrates comprehensive data processing pipeline
+   - Path: `examples/advanced-processing/`
+   - Features: Record deaggregation, metadata extraction, format conversion, and Athena integration
+   
 ## Documentation Generation
 
 This module uses [terraform-docs](https://github.com/terraform-docs/terraform-docs) to generate documentation. 
@@ -62,6 +78,96 @@ This module implements several best practices for Terraform code quality:
 6. **Intelligent Storage**: S3 bucket with optional Intelligent-Tiering for cost optimization
 7. **Comprehensive Documentation**: Clear descriptions for all variables and resources
 8. **Code Modularity**: Separated logging functionality into dedicated submodules
+
+## Advanced Firehose Features
+
+### S3 Prefix Timezone Configuration
+
+When using the Firehose logging option, this module supports custom timezone configuration for S3 prefixes. This allows you to format date patterns in S3 prefixes using a timezone other than UTC.
+
+### How It Works
+
+The module sets the `custom_time_zone` parameter in the Firehose's extended S3 configuration. This affects how date patterns like `!{timestamp:yyyy-MM-dd}` are evaluated in the S3 prefixes.
+
+### Benefits
+
+- **Regional Compliance**: Store logs with timestamps matching your region's timezone
+- **Simplified Log Analysis**: Avoid timezone conversion when analyzing logs
+- **Organized Storage**: Create intuitive folder structures based on local time
+
+### Example Usage
+
+```hcl
+module "waf" {
+  source = "path/to/module"
+  
+  # ... other configuration ...
+  
+  # Enable Firehose logging
+  logging_dist_firehose = true
+  
+  # Configure S3 prefixes with Tokyo timezone
+  log_s3_prefix                       = "waf-logs/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/"
+  log_s3_prefix_timezone              = "Asia/Tokyo"  # Format dates using Tokyo timezone
+  log_s3_error_output_prefix          = "waf-errors/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/"
+  log_s3_error_output_prefix_timezone = "Asia/Tokyo"  # Format error dates using Tokyo timezone
+}
+```
+
+Valid timezone values follow the IANA Time Zone Database format (e.g., UTC, America/New_York, Europe/London, Asia/Tokyo).
+
+### Custom Processing Configuration
+
+The module also supports configuring custom processors for the Firehose delivery stream. This allows you to transform, filter, or enhance the WAF logs before they are delivered to S3.
+
+#### Available Features
+
+- **Record Format Conversion**: Convert between formats (JSON, Parquet, etc.)
+- **Data Transformation**: Extract metadata, manipulate fields
+- **Record Deaggregation**: Split aggregated records
+- **Delimiter Addition**: Ensure records have proper line breaks
+
+#### Example Usage
+
+```hcl
+module "waf" {
+  source = "path/to/module"
+  
+  # ... other configuration ...
+  
+  # Enable Firehose logging
+  logging_dist_firehose = true
+  
+  # Custom Firehose processing
+  firehose_enable_processing = true
+  firehose_processors = [
+    {
+      # Extract specific fields from WAF logs
+      type = "MetadataExtraction"
+      parameters = [
+        {
+          parameter_name  = "JsonParsingEngine"
+          parameter_value = "JQ-1.6"
+        },
+        {
+          parameter_name  = "MetadataExtractionQuery"
+          parameter_value = "{timestamp:.timestamp, sourceIp:.httpRequest.clientIp}"
+        }
+      ]
+    },
+    {
+      # Add newline delimiter to each record
+      type = "AppendDelimiterToRecord"
+      parameters = [
+        {
+          parameter_name  = "Delimiter"
+          parameter_value = "\\n"
+        }
+      ]
+    }
+  ]
+}
+```
 
 ## Usage
 
@@ -147,6 +253,38 @@ module "waf_firehose" {
   
   # You can specify an existing S3 bucket for Firehose
   log_bucket_arn = "arn:aws:s3:::existing-bucket-name"
+  
+  # Configure Firehose buffer settings
+  firehose_buffer_interval = 60  # seconds
+  firehose_buffer_size     = 5   # MB
+}
+```
+
+### Kinesis Firehose with Custom Timezone and Error Logging
+
+```hcl
+module "waf_firehose_with_timezone" {
+  source = "path/to/module"
+  
+  name        = "example-waf"
+  description = "Example WAF with Firehose logging and custom timezone"
+  scope       = "REGIONAL"
+  
+  # Enable only Firehose logging
+  logging_dist_cloudwatch = false
+  logging_dist_s3         = false
+  logging_dist_firehose   = true
+  
+  # Firehose error logging to CloudWatch
+  firehose_enable_error_logging     = true
+  firehose_error_log_retention_days = 7
+  firehose_error_log_group_name     = "aws-waf-firehose-errors"
+  
+  # S3 prefix with custom timezone configuration
+  log_s3_prefix                       = "waf-logs/"
+  log_s3_prefix_timezone              = "Asia/Tokyo"  # Use Tokyo timezone for logs
+  log_s3_error_output_prefix          = "waf-errors/"
+  log_s3_error_output_prefix_timezone = "Asia/Tokyo"  # Use Tokyo timezone for error logs
 }
 ```
 
@@ -196,16 +334,23 @@ module "waf_firehose" {
 | <a name="input_enable_logging_filter"></a> [enable\_logging\_filter](#input\_enable\_logging\_filter) | (Optional) Whether to enable logging filters to selectively log requests. | `bool` | `false` | no |
 | <a name="input_firehose_buffer_interval"></a> [firehose\_buffer\_interval](#input\_firehose\_buffer\_interval) | Buffer interval for Firehose in seconds (60-900) | `number` | `300` | no |
 | <a name="input_firehose_buffer_size"></a> [firehose\_buffer\_size](#input\_firehose\_buffer\_size) | Buffer size for Firehose in MB (1-128) | `number` | `128` | no |
+| <a name="input_firehose_enable_error_logging"></a> [firehose\_enable\_error\_logging](#input\_firehose\_enable\_error\_logging) | (Optional) Enable CloudWatch Logs for error logging of the Firehose delivery stream | `bool` | `true` | no |
+| <a name="input_firehose_enable_processing"></a> [firehose\_enable\_processing](#input\_firehose\_enable\_processing) | (Optional) Enable processing configuration for Firehose delivery stream | `bool` | `true` | no |
+| <a name="input_firehose_error_log_group_name"></a> [firehose\_error\_log\_group\_name](#input\_firehose\_error\_log\_group\_name) | (Optional) CloudWatch Log group name for Firehose error logs. If empty, a default name will be used. | `string` | `""` | no |
+| <a name="input_firehose_error_log_retention_days"></a> [firehose\_error\_log\_retention\_days](#input\_firehose\_error\_log\_retention\_days) | (Optional) Number of days to retain Firehose error logs in CloudWatch | `number` | `14` | no |
+| <a name="input_firehose_processors"></a> [firehose\_processors](#input\_firehose\_processors) | (Optional) List of processors for Firehose delivery stream. Each processor has a type and list of parameters. | <pre>list(object({<br/>    type = string<br/>    parameters = list(object({<br/>      parameter_name  = string<br/>      parameter_value = string<br/>    }))<br/>  }))</pre> | <pre>[<br/>  {<br/>    "parameters": [<br/>      {<br/>        "parameter_name": "Delimiter",<br/>        "parameter_value": "\\n"<br/>      }<br/>    ],<br/>    "type": "AppendDelimiterToRecord"<br/>  }<br/>]</pre> | no |
 | <a name="input_intelligent_tiering_days"></a> [intelligent\_tiering\_days](#input\_intelligent\_tiering\_days) | (Optional) Number of days after which logs will be moved to Intelligent-Tiering storage class | `number` | `30` | no |
 | <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | (Optional) ARN of KMS key to use for encrypting logs. | `string` | `""` | no |
 | <a name="input_log_bucket_arn"></a> [log\_bucket\_arn](#input\_log\_bucket\_arn) | ARN of an existing S3 bucket to use for logs | `string` | `""` | no |
 | <a name="input_log_bucket_keys"></a> [log\_bucket\_keys](#input\_log\_bucket\_keys) | (Optional) If true, enables KMS key access to S3 bucket for log encryption. | `bool` | `false` | no |
 | <a name="input_log_retention_days"></a> [log\_retention\_days](#input\_log\_retention\_days) | (Optional) Number of days to retain WAF logs in CloudWatch. | `number` | `90` | no |
 | <a name="input_log_s3_error_output_prefix"></a> [log\_s3\_error\_output\_prefix](#input\_log\_s3\_error\_output\_prefix) | S3 prefix for WAF error logs. A trailing slash (/) is required. | `string` | `"waf-fulllog-error/"` | no |
+| <a name="input_log_s3_error_output_prefix_timezone"></a> [log\_s3\_error\_output\_prefix\_timezone](#input\_log\_s3\_error\_output\_prefix\_timezone) | (Optional) Timezone for S3 error output prefix date formatting in Firehose. This sets the custom\_time\_zone parameter for error output paths. Valid values include timezones like 'UTC', 'America/New\_York', 'Asia/Tokyo', 'Europe/London', etc. See the IANA Time Zone Database for valid values. | `string` | `"UTC"` | no |
 | <a name="input_log_s3_prefix"></a> [log\_s3\_prefix](#input\_log\_s3\_prefix) | S3 prefix for WAF logs. A trailing slash (/) is required. | `string` | `"waf-fulllog/"` | no |
-| <a name="input_logging_dist_cloudwatch"></a> [logging\_dist\_cloudwatch](#input\_logging\_dist\_cloudwatch) | (Optional) If true, all WebACL traffic will be logged to CloudWatch. | `bool` | `false` | no |
-| <a name="input_logging_dist_firehose"></a> [logging\_dist\_firehose](#input\_logging\_dist\_firehose) | (Optional) If true, all WebACL traffic will be logged to Kinesis Firehose. | `bool` | `false` | no |
-| <a name="input_logging_dist_s3"></a> [logging\_dist\_s3](#input\_logging\_dist\_s3) | (Optional) If true, all WebACL traffic will be logged to S3. | `bool` | `false` | no |
+| <a name="input_log_s3_prefix_timezone"></a> [log\_s3\_prefix\_timezone](#input\_log\_s3\_prefix\_timezone) | (Optional) Timezone for S3 prefix date formatting in Firehose. This sets the custom\_time\_zone parameter for Firehose delivery, affecting how date patterns in S3 prefixes are evaluated. Valid values include timezones like 'UTC', 'America/New\_York', 'Asia/Tokyo', 'Europe/London', etc. See the IANA Time Zone Database for valid values. | `string` | `"UTC"` | no |
+| <a name="input_logging_dist_cloudwatch"></a> [logging\_dist\_cloudwatch](#input\_logging\_dist\_cloudwatch) | (Optional) If true, all WebACL traffic will be logged to CloudWatch. Only one of logging\_dist\_cloudwatch, logging\_dist\_s3, or logging\_dist\_firehose can be true. | `bool` | `false` | no |
+| <a name="input_logging_dist_firehose"></a> [logging\_dist\_firehose](#input\_logging\_dist\_firehose) | (Optional) If true, all WebACL traffic will be logged to Kinesis Firehose. Only one of logging\_dist\_cloudwatch, logging\_dist\_s3, or logging\_dist\_firehose can be true. | `bool` | `false` | no |
+| <a name="input_logging_dist_s3"></a> [logging\_dist\_s3](#input\_logging\_dist\_s3) | (Optional) If true, all WebACL traffic will be logged to S3. Only one of logging\_dist\_cloudwatch, logging\_dist\_s3, or logging\_dist\_firehose can be true. | `bool` | `false` | no |
 | <a name="input_metric_name"></a> [metric\_name](#input\_metric\_name) | (Required) A friendly name of the CloudWatch metric for the WebACL. | `string` | `"waf-web-acl-metric"` | no |
 | <a name="input_name"></a> [name](#input\_name) | (Required) Name of the WebACL | `string` | n/a | yes |
 | <a name="input_redact_authorization_header"></a> [redact\_authorization\_header](#input\_redact\_authorization\_header) | (Optional) Whether to redact the 'authorization' header in the logs. | `bool` | `false` | no |

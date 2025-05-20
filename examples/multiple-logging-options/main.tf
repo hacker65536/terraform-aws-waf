@@ -104,6 +104,23 @@ module "waf_with_firehose_only" {
   logging_dist_s3         = false
   logging_dist_firehose   = true
 
+  # Firehose buffer configuration
+  firehose_buffer_interval = 60 # 1 minute
+  firehose_buffer_size     = 5  # 5 MB
+
+  # Firehose error logging to CloudWatch
+  # When set to true, any S3 delivery failures will be logged to CloudWatch
+  firehose_enable_error_logging     = true
+  firehose_error_log_retention_days = 7
+  firehose_error_log_group_name     = "aws-waf-firehose-errors"
+
+  # S3 prefix with timezone configuration
+  # The custom_time_zone parameter will be set in Firehose to format date patterns using the specified timezone
+  log_s3_prefix                       = "waf-logs/"
+  log_s3_prefix_timezone              = "Asia/Tokyo" # This timezone will be used for date formatting in log prefixes
+  log_s3_error_output_prefix          = "waf-errors/"
+  log_s3_error_output_prefix_timezone = "Asia/Tokyo" # This timezone will be used for date formatting in error log prefixes
+
   # You can specify an existing S3 bucket ARN for Firehose to use
   # log_bucket_arn = "arn:aws:s3:::existing-bucket-name"
 }

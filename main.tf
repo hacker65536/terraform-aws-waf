@@ -242,6 +242,19 @@ module "firehose_logging" {
   firehose_buffer_size       = var.firehose_buffer_size
   log_s3_prefix              = var.log_s3_prefix
   log_s3_error_output_prefix = var.log_s3_error_output_prefix
+
+  # CloudWatch Logs for error logging
+  enable_error_logging     = var.firehose_enable_error_logging
+  error_log_group_name     = var.firehose_error_log_group_name
+  error_log_retention_days = var.firehose_error_log_retention_days
+
+  # S3 prefix timezone settings
+  s3_prefix_timezone              = var.log_s3_prefix_timezone
+  s3_error_output_prefix_timezone = var.log_s3_error_output_prefix_timezone
+
+  # Firehose processing configuration
+  enable_processing = var.firehose_enable_processing
+  processors        = var.firehose_processors
 }
 
 

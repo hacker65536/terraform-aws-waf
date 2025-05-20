@@ -61,6 +61,64 @@ variable "log_s3_error_output_prefix" {
   }
 }
 
+variable "enable_error_logging" {
+  type        = bool
+  default     = true
+  description = "Enable CloudWatch Logs for error logging of the Firehose delivery stream"
+}
+
+variable "error_log_group_name" {
+  type        = string
+  default     = ""
+  description = "CloudWatch Log group name for Firehose error logs. If empty, 'aws-waf-logs-error-{var.name}' will be used."
+}
+
+variable "error_log_retention_days" {
+  type        = number
+  default     = 14
+  description = "Number of days to retain Firehose error logs in CloudWatch"
+}
+
+variable "s3_prefix_timezone" {
+  type        = string
+  description = "Timezone for S3 prefix date formatting. Sets the custom_time_zone parameter for Firehose's extended_s3_configuration. Valid timezone values follow the IANA Time Zone Database format (e.g., 'UTC', 'America/New_York', 'Asia/Tokyo', 'Europe/London', etc.). This affects how date patterns in the S3 prefix are interpreted."
+  default     = "UTC"
+}
+
+variable "s3_error_output_prefix_timezone" {
+  type        = string
+  description = "Timezone for S3 error output prefix date formatting. Sets the custom_time_zone parameter for error output prefix formatting. Valid timezone values follow the IANA Time Zone Database format (e.g., 'UTC', 'America/New_York', 'Asia/Tokyo', 'Europe/London', etc.). This affects how date patterns in the error output S3 prefix are interpreted."
+  default     = "UTC"
+}
+
+variable "enable_processing" {
+  type        = bool
+  description = "Enable processing configuration for Firehose delivery stream"
+  default     = true
+}
+
+variable "processors" {
+  type = list(object({
+    type = string
+    parameters = list(object({
+      parameter_name  = string
+      parameter_value = string
+    }))
+  }))
+  description = "List of processors for Firehose delivery stream. Each processor has a type and list of parameters. Default is a simple AppendDelimiterToRecord processor."
+  default = [
+    {
+      type = "AppendDelimiterToRecord"
+      parameters = [
+        {
+          parameter_name  = "Delimiter"
+          parameter_value = "\\n"
+        }
+      ]
+    }
+  ]
+}
+
 # This is used in the main module file to create the S3 bucket if needed
 variable "s3_bucket_arn" {
   type        = string
