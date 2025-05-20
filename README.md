@@ -5,7 +5,7 @@ This Terraform module manages AWS WAF (Web Application Firewall) resources with 
 ## Features
 
 - Support for both Terraform-managed and WAF Charm-managed WAFs
-- Multiple logging destination options:
+- Three flexible logging destination options (one can be enabled at a time):
   - CloudWatch Logs
   - S3 Bucket
   - Kinesis Firehose
@@ -21,7 +21,7 @@ This module has a modular structure with separate submodules for each logging ty
 - `logging_dist_s3`: Handles S3 bucket logging configuration
 - `logging_dist_firehose`: Handles Firehose delivery stream configuration
 
-The main module orchestrates these submodules based on the enabled logging options.
+The main module orchestrates these submodules based on the selected logging destination. Due to AWS WAF constraints, only one logging destination can be enabled at a time.
 
 ## Documentation Generation
 
@@ -65,20 +65,21 @@ This module implements several best practices for Terraform code quality:
 
 ## Usage
 
-### Basic Usage with All Logging Options
+### Basic Usage with Single Logging Destination
 
 ```hcl
 module "waf" {
   source = "path/to/module"
   
   name        = "example-waf"
-  description = "Example WAF with all logging options enabled"
+  description = "Example WAF with CloudWatch logging enabled"
   scope       = "REGIONAL"  # or "CLOUDFRONT"
   
-  # Enable logging to CloudWatch, S3, and Firehose
+  # Enable logging to only one destination (CloudWatch, S3, or Firehose)
+  # Only one of these can be set to true
   logging_dist_cloudwatch = true
-  logging_dist_s3         = true
-  logging_dist_firehose   = true
+  logging_dist_s3         = false
+  logging_dist_firehose   = false
   
   # Optional configurations
   log_retention_days = 30  # CloudWatch log retention

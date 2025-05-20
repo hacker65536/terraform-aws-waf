@@ -60,22 +60,32 @@ variable "rules" {
   default     = []
 }
 
+# WAF Logging Configuration
+# 
+# This module supports three different types of logging destinations:
+# - CloudWatch Logs
+# - S3 Bucket
+# - Kinesis Firehose
+#
+# Due to AWS WAF constraints, only one logging destination can be enabled at a time.
+# The variables below have validation rules to ensure that this constraint is met.
+
 variable "logging_dist_cloudwatch" {
   type        = bool
   default     = false
-  description = "(Optional) If true, all WebACL traffic will be logged to CloudWatch."
+  description = "(Optional) If true, all WebACL traffic will be logged to CloudWatch. Only one of logging_dist_cloudwatch, logging_dist_s3, or logging_dist_firehose can be true."
 }
 
 variable "logging_dist_s3" {
   type        = bool
   default     = false
-  description = "(Optional) If true, all WebACL traffic will be logged to S3."
+  description = "(Optional) If true, all WebACL traffic will be logged to S3. Only one of logging_dist_cloudwatch, logging_dist_s3, or logging_dist_firehose can be true."
 }
 
 variable "logging_dist_firehose" {
   type        = bool
   default     = false
-  description = "(Optional) If true, all WebACL traffic will be logged to Kinesis Firehose."
+  description = "(Optional) If true, all WebACL traffic will be logged to Kinesis Firehose. Only one of logging_dist_cloudwatch, logging_dist_s3, or logging_dist_firehose can be true."
 }
 
 variable "log_bucket_arn" {
@@ -199,3 +209,4 @@ variable "s3_bucket_prefix" {
   description = "(Optional) Prefix for the S3 bucket name used for logs"
   default     = "aws-waf-logs-"
 }
+

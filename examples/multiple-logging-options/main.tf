@@ -4,23 +4,56 @@ provider "aws" {
   region = "ap-northeast-1"
 }
 
-module "waf_with_all_logging" {
+module "waf_with_cloudwatch_logging" {
   source = "../../" # Adjust path as needed
 
-  name        = "example-waf-all-logging"
-  description = "Example WAF with all logging options enabled"
+  name        = "example-waf-cloudwatch"
+  description = "Example WAF with CloudWatch logging"
   scope       = "REGIONAL"
 
-  # Enable all logging options
+  # Enable CloudWatch logging only
   logging_dist_cloudwatch = true
-  logging_dist_s3         = true
-  logging_dist_firehose   = true
+  logging_dist_s3         = false
+  logging_dist_firehose   = false
 
-  # Optional configurations
+  # Optional CloudWatch configurations
   log_retention_days          = 30
   cloudwatch_log_class        = "STANDARD"
   redact_authorization_header = true
   enable_logging_filter       = true
+}
+
+# Example with S3 logging
+module "waf_with_s3_logging" {
+  source = "../../" # Adjust path as needed
+
+  name        = "example-waf-s3"
+  description = "Example WAF with S3 logging"
+  scope       = "REGIONAL"
+
+  # Enable S3 logging only
+  logging_dist_cloudwatch = false
+  logging_dist_s3         = true
+  logging_dist_firehose   = false
+
+  # Optional S3 configurations
+  redact_authorization_header = true
+  enable_intelligent_tiering  = true
+  intelligent_tiering_days    = 30
+}
+
+# Example with Firehose logging
+module "waf_with_firehose_logging" {
+  source = "../../" # Adjust path as needed
+
+  name        = "example-waf-firehose"
+  description = "Example WAF with Firehose logging"
+  scope       = "REGIONAL"
+
+  # Enable Firehose logging only
+  logging_dist_cloudwatch = false
+  logging_dist_s3         = false
+  logging_dist_firehose   = true
 
   # Firehose specific settings
   firehose_buffer_interval   = 60

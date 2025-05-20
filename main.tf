@@ -1,3 +1,17 @@
+locals {
+  # Verify that only one logging destination is enabled
+  enabled_logging_destinations = (
+    (var.logging_dist_cloudwatch ? 1 : 0) +
+    (var.logging_dist_s3 ? 1 : 0) +
+    (var.logging_dist_firehose ? 1 : 0)
+  )
+  validate_logging_destinations = (
+    local.enabled_logging_destinations <= 1
+    ? true
+    : tobool("ERROR: Only one logging destination (CloudWatch, S3, or Firehose) can be enabled at a time")
+  )
+}
+
 # AWS WAF Web ACL managed by Terraform
 # This resource is created only when wafcharm_managed is set to false
 # It creates a standard AWS WAF Web ACL with customizable rules
@@ -186,7 +200,7 @@ resource "aws_wafv2_web_acl" "wafcharm_managed" {
 # Creates and configures a CloudWatch log group for WAF logs
 # Only created when logging_dist_cloudwatch is true
 module "cloudwatch_logging" {
-  count  = var.logging_dist_cloudwatch ? 1 : 0
+  count  = local.validate_logging_destinations && var.logging_dist_cloudwatch ? 1 : 0
   source = "./modules/logging_dist_cloudwatch"
 
   name               = var.name
@@ -202,7 +216,7 @@ module "cloudwatch_logging" {
 # - logging_dist_s3 is true, or
 # - logging_dist_firehose is true but no existing bucket ARN is provided
 module "s3_logging" {
-  count  = var.logging_dist_s3 || (var.logging_dist_firehose && var.log_bucket_arn == "") ? 1 : 0
+  count  = local.validate_logging_destinations && (var.logging_dist_s3 || (var.logging_dist_firehose && var.log_bucket_arn == "")) ? 1 : 0
   source = "./modules/logging_dist_s3"
 
   name                       = var.name
@@ -216,7 +230,7 @@ module "s3_logging" {
 # The stream will deliver logs to an S3 bucket with customizable buffer settings
 # Only created when logging_dist_firehose is true
 module "firehose_logging" {
-  count  = var.logging_dist_firehose ? 1 : 0
+  count  = local.validate_logging_destinations && var.logging_dist_firehose ? 1 : 0
   source = "./modules/logging_dist_firehose"
 
   name                       = var.name
@@ -233,20 +247,23 @@ module "firehose_logging" {
 
 
 # AWS WAF Web ACL Logging Configuration
-# Configures logging for the WAF Web ACL, supporting multiple destination types:
-# - CloudWatch Logs
-# - S3 Bucket
+# Configures logging for the WAF Web ACL, supporting a single destination type:
+# - CloudWatch Logs OR
+# - S3 Bucket OR
 # - Kinesis Firehose
-# This resource is created only when at least one logging destination is enabled
+# This resource is created only when exactly one logging destination is enabled
 
 resource "aws_wafv2_web_acl_logging_configuration" "logging_conf" {
-  count = (var.logging_dist_cloudwatch || var.logging_dist_s3 || var.logging_dist_firehose) ? 1 : 0
+  # Apply the validation check
+  count = local.validate_logging_destinations && (var.logging_dist_cloudwatch || var.logging_dist_s3 || var.logging_dist_firehose) ? 1 : 0
 
-  log_destination_configs = compact([
-    var.logging_dist_cloudwatch ? module.cloudwatch_logging[0].cloudwatch_log_group_arn : "",
-    var.logging_dist_s3 ? module.s3_logging[0].s3_bucket_arn : "",
-    var.logging_dist_firehose ? module.firehose_logging[0].firehose_delivery_stream_arn : ""
-  ])
+  log_destination_configs = [
+    var.logging_dist_cloudwatch ? module.cloudwatch_logging[0].cloudwatch_log_group_arn : (
+      var.logging_dist_s3 ? module.s3_logging[0].s3_bucket_arn : (
+        var.logging_dist_firehose ? module.firehose_logging[0].firehose_delivery_stream_arn : ""
+      )
+    )
+  ]
 
   resource_arn = !var.wafcharm_managed ? aws_wafv2_web_acl.terraform_managed[0].arn : aws_wafv2_web_acl.wafcharm_managed[0].arn
 
