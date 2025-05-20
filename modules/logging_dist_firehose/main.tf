@@ -1,21 +1,42 @@
+#--------------------------------------------------------------
+# Firehose Delivery Stream Module for WAF Logs
+#--------------------------------------------------------------
+
+locals {
+  # Determine the destination S3 bucket ARN
+  destination_bucket_arn = var.log_bucket_arn != "" ? var.log_bucket_arn : var.s3_bucket_arn
+
+  # Define bucket resources for IAM permissions
+  bucket_resources = [
+    local.destination_bucket_arn,
+    "${local.destination_bucket_arn}/*"
+  ]
+
+  # Default log group name if not specified
+  log_group_name = var.error_log_group_name != "" ? var.error_log_group_name : "aws-waf-logs-error-${var.name}"
+}
+
 resource "aws_kinesis_firehose_delivery_stream" "firehose" {
   name        = "aws-waf-logs-${var.name}"
   destination = "extended_s3"
 
   extended_s3_configuration {
-    role_arn            = aws_iam_role.firehose.arn
-    bucket_arn          = var.log_bucket_arn != "" ? var.log_bucket_arn : var.s3_bucket_arn
-    buffering_interval  = var.firehose_buffer_interval
-    buffering_size      = var.firehose_buffer_size
-    compression_format  = "GZIP"
+    # Base configuration
+    role_arn           = aws_iam_role.firehose.arn
+    bucket_arn         = local.destination_bucket_arn
+    compression_format = "GZIP"
+    s3_backup_mode     = "Disabled"
+
+    # Buffer settings
+    buffering_interval = var.firehose_buffer_interval
+    buffering_size     = var.firehose_buffer_size
+
+    # S3 path configuration with timezone support
     prefix              = var.log_s3_prefix
     error_output_prefix = var.log_s3_error_output_prefix
+    custom_time_zone    = var.s3_prefix_timezone
 
-    # Custom timezone configuration - directly configuring the timezone
-    custom_time_zone = var.s3_prefix_timezone
-    s3_backup_mode   = "Disabled"
-
-    # Configurable processing configuration for record transformation
+    # Configurable processing configuration
     dynamic "processing_configuration" {
       for_each = var.enable_processing ? [1] : []
       content {
@@ -51,6 +72,9 @@ resource "aws_kinesis_firehose_delivery_stream" "firehose" {
   }
 }
 
+#--------------------------------------------------------------
+# IAM Role and Policies
+#--------------------------------------------------------------
 resource "aws_iam_role" "firehose" {
   name               = "KinesisFirehoseServiceRole-${var.name}-aws-logs"
   path               = "/service-role/"
@@ -64,6 +88,7 @@ resource "aws_iam_role_policy" "firehose" {
   policy = data.aws_iam_policy_document.firehose.json
 }
 
+# Trust policy for Firehose service
 data "aws_iam_policy_document" "firehose_assume_role_policy" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -75,7 +100,9 @@ data "aws_iam_policy_document" "firehose_assume_role_policy" {
   }
 }
 
+# Permission policy for Firehose
 data "aws_iam_policy_document" "firehose" {
+  # S3 write permissions
   statement {
     sid    = "S3Access"
     effect = "Allow"
@@ -89,13 +116,11 @@ data "aws_iam_policy_document" "firehose" {
       "s3:PutObject",
     ]
 
-    resources = [
-      var.log_bucket_arn != "" ? var.log_bucket_arn : var.s3_bucket_arn,
-      var.log_bucket_arn != "" ? "${var.log_bucket_arn}/*" : "${var.s3_bucket_arn}/*"
-    ]
+    resources = local.bucket_resources
   }
 
   # Add CloudWatch Logs permissions when error logging is enabled
+  # CloudWatch Logs permissions when error logging is enabled
   dynamic "statement" {
     for_each = var.enable_error_logging ? [1] : []
     content {
@@ -139,7 +164,7 @@ data "aws_iam_policy_document" "firehose" {
 # CloudWatch Log group for Firehose error logs
 resource "aws_cloudwatch_log_group" "firehose_error_logs" {
   count             = var.enable_error_logging ? 1 : 0
-  name              = var.error_log_group_name != "" ? var.error_log_group_name : "aws-waf-logs-error-${var.name}"
+  name              = local.log_group_name
   retention_in_days = var.error_log_retention_days
 }
 

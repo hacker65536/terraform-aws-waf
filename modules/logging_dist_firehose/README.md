@@ -134,6 +134,23 @@ module "firehose_with_custom_processing" {
 
 For detailed information on each processor type and parameters, refer to the [AWS Kinesis Firehose documentation](https://docs.aws.amazon.com/firehose/latest/dev/data-transformation.html).
 
+### Validation Rules
+
+This module includes several validation rules to help prevent common configuration errors:
+
+1. **Processor Type Validation**: Only the following processor types are allowed:
+   - `AppendDelimiterToRecord`
+   - `MetadataExtraction`
+   - `RecordDeAggregation`
+   - `Lambda`
+   - `DataFormatConversion`
+
+2. **Parameter Name Validation**:
+   - For `AppendDelimiterToRecord`, only the `Delimiter` parameter is allowed
+   - For `MetadataExtraction`, only `JsonParsingEngine` and `MetadataExtractionQuery` parameters are allowed
+
+These validations help catch configuration errors early in the deployment process.
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
@@ -191,3 +208,68 @@ No modules.
 | <a name="output_firehose_delivery_stream_arn"></a> [firehose\_delivery\_stream\_arn](#output\_firehose\_delivery\_stream\_arn) | The ARN of the Kinesis Firehose delivery stream used for WAF logs. |
 | <a name="output_firehose_delivery_stream_id"></a> [firehose\_delivery\_stream\_id](#output\_firehose\_delivery\_stream\_id) | The ID of the Kinesis Firehose delivery stream used for WAF logs. |
 <!-- END_TF_DOCS -->
+
+## Troubleshooting
+
+### Common Issues and Solutions
+
+#### No Logs Appearing in S3
+
+If WAF logs aren't appearing in the S3 bucket:
+
+1. **Check IAM Permissions**: Ensure the Firehose role has correct S3 permissions
+   ```bash
+   aws iam get-policy-document --policy-arn <firehose-role-policy-arn>
+   ```
+
+2. **Verify Firehose Delivery Stream Status**: Check that the delivery stream is active
+   ```bash
+   aws firehose describe-delivery-stream --delivery-stream-name aws-waf-logs-<your-waf-name>
+   ```
+
+3. **Check CloudWatch Error Logs**: Review the error logs if error logging is enabled
+   ```bash
+   aws logs get-log-events --log-group-name <error-log-group-name> --log-stream-name S3Delivery
+   ```
+
+#### Processing Configuration Issues
+
+If your processing configuration isn't working as expected:
+
+1. **Validate Processor Parameters**: Ensure all parameters are correctly specified
+2. **Check for Processing Errors**: Review CloudWatch error logs for processing failures
+3. **Test with Simple Configuration**: Start with a basic processor (like AppendDelimiterToRecord) before adding more complex ones
+
+#### S3 Prefix Time Zone Issues
+
+If date patterns in S3 prefixes aren't reflecting the configured timezone:
+
+1. **Verify S3 Prefix Format**: Ensure your prefix includes valid timestamp patterns (e.g., `!{timestamp:yyyy-MM-dd}`)
+2. **Check Time Zone Validity**: Ensure you're using a valid IANA Time Zone Database name
+3. **Inspect Sample Logs**: Check the prefixes of files already delivered to S3
+
+### Advanced Diagnostics
+
+To diagnose Firehose delivery issues in detail:
+
+```bash
+# Get detailed metrics for your Firehose delivery stream
+aws cloudwatch get-metric-statistics \
+  --metric-name DeliveryToS3.Success \
+  --namespace AWS/Firehose \
+  --dimensions Name=DeliveryStreamName,Value=aws-waf-logs-<your-waf-name> \
+  --start-time $(date -v-1d +%Y-%m-%dT%H:%M:%S) \
+  --end-time $(date +%Y-%m-%dT%H:%M:%S) \
+  --period 300 \
+  --statistics Sum
+
+# Get processing failures if you're using Lambda processors
+aws cloudwatch get-metric-statistics \
+  --metric-name ProcessingFailures \
+  --namespace AWS/Firehose \
+  --dimensions Name=DeliveryStreamName,Value=aws-waf-logs-<your-waf-name> \
+  --start-time $(date -v-1d +%Y-%m-%dT%H:%M:%S) \
+  --end-time $(date +%Y-%m-%dT%H:%M:%S) \
+  --period 300 \
+  --statistics Sum
+```

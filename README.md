@@ -1,6 +1,24 @@
 # AWS WAF Module with Multiple Logging Options
 
-This Terraform module manages AWS WAF (Web Application Firewall) resources with flexible logging options.
+This Terraform module manages AWS### Advanced Firehose Features
+
+## S3 Prefix Timezone Configuration
+
+When using the Firehose logging option, this module supports custom timezone configuration for S3 prefixes. This allows you to format date patterns in S3 prefixes using a timezone other than UTC.
+
+### How It Works
+
+The module sets the `custom_time_zone` parameter in the Firehose's extended S3 configuration. This affects how date patterns like `!{timestamp:yyyy-MM-dd}` are evaluated in the S3 prefixes.
+
+### Benefits
+
+- **Regional Compliance**: Store logs with timestamps matching your region's timezone
+- **Simplified Log Analysis**: Avoid timezone conversion when analyzing logs
+- **Organized Storage**: Create intuitive folder structures based on local time
+
+### Example Usage
+
+```hclon Firewall) resources with flexible logging options.
 
 ## Features
 
@@ -37,7 +55,11 @@ This module includes several examples to demonstrate different use cases:
 
 3. **Advanced Firehose Processing**: Demonstrates comprehensive data processing pipeline
    - Path: `examples/advanced-processing/`
-   - Features: Record deaggregation, metadata extraction, format conversion, and Athena integration
+   - Features: Record deaggregation, metadata extraction, format conversion, and data transformation
+
+4. **Athena Integration**: Shows how to integrate WAF logs with Amazon Athena for SQL-based analysis
+   - Path: `examples/athena-integration/`
+   - Features: Glue Data Catalog, Parquet conversion, partitioning, and sample Athena queries
    
 ## Documentation Generation
 
@@ -118,16 +140,35 @@ Valid timezone values follow the IANA Time Zone Database format (e.g., UTC, Amer
 
 ### Custom Processing Configuration
 
-The module also supports configuring custom processors for the Firehose delivery stream. This allows you to transform, filter, or enhance the WAF logs before they are delivered to S3.
+## Firehose Data Processing Pipeline
 
-#### Available Features
+The module supports configuring comprehensive data processing pipelines for the Firehose delivery stream. This allows you to transform, filter, enhance, and convert the WAF logs before they are delivered to S3, making downstream analysis and integration much more powerful.
 
-- **Record Format Conversion**: Convert between formats (JSON, Parquet, etc.)
-- **Data Transformation**: Extract metadata, manipulate fields
-- **Record Deaggregation**: Split aggregated records
-- **Delimiter Addition**: Ensure records have proper line breaks
+### Available Processors
 
-#### Example Usage
+| Processor Type | Description | Common Use Cases |
+|----------------|-------------|-----------------|
+| `AppendDelimiterToRecord` | Adds a delimiter to the end of each record | Ensuring proper newline separation for log processing tools |
+| `MetadataExtraction` | Extracts specific fields from JSON logs | Creating searchable metadata for faster queries |
+| `RecordDeAggregation` | Splits aggregated records | Processing batch records individually |
+| `Lambda` | Applies custom transformations via AWS Lambda | Complex processing logic not covered by other processors |
+| `DataFormatConversion` | Converts between data formats | Converting JSON logs to Parquet for Athena integration |
+
+### Processing Pipeline Benefits
+
+- **Cost Optimization**: Filter out unnecessary data before storage
+- **Query Performance**: Convert to columnar formats like Parquet for faster analytics
+- **Integration Ready**: Extract metadata for seamless integration with other AWS services
+- **Schema Evolution**: Prepare data for downstream schema requirements
+
+### Example Processing Patterns
+
+1. **Basic Processing**: Add newline delimiters to ensure proper record formatting
+2. **Analytics Preparation**: Extract metadata and convert to Parquet for Athena queries
+3. **Data Pipeline Ingestion**: Prepare data for Glue ETL or EMR processing
+4. **Real-time Monitoring**: Extract critical fields for CloudWatch Metrics or custom dashboards
+
+### Example Usage
 
 ```hcl
 module "waf" {
@@ -142,7 +183,17 @@ module "waf" {
   firehose_enable_processing = true
   firehose_processors = [
     {
-      # Extract specific fields from WAF logs
+      # Step 1: Deaggregate any batch records
+      type = "RecordDeAggregation"
+      parameters = [
+        {
+          parameter_name  = "SubRecordType"
+          parameter_value = "JSON"
+        }
+      ]
+    },
+    {
+      # Step 2: Extract specific fields from WAF logs
       type = "MetadataExtraction"
       parameters = [
         {
@@ -151,12 +202,30 @@ module "waf" {
         },
         {
           parameter_name  = "MetadataExtractionQuery"
-          parameter_value = "{timestamp:.timestamp, sourceIp:.httpRequest.clientIp}"
+          parameter_value = "{timestamp:.timestamp, sourceIp:.httpRequest.clientIp, uri:.httpRequest.uri, action:.action, ruleId:.terminatingRuleId}"
         }
       ]
     },
     {
-      # Add newline delimiter to each record
+      # Step 3: Convert to Parquet for analytics (requires AWS Glue Data Catalog setup)
+      type = "DataFormatConversion"
+      parameters = [
+        {
+          parameter_name  = "SchemaConfiguration"
+          parameter_value = "{ \"CatalogId\": \"123456789012\", \"DatabaseName\": \"waf_logs\", \"TableName\": \"waf_logs_table\", \"Region\": \"us-east-1\" }"
+        },
+        {
+          parameter_name  = "InputFormatConfiguration"
+          parameter_value = "{ \"Deserializer\": { \"OpenXJsonSerDe\": { \"CaseInsensitive\": true } } }"
+        },
+        {
+          parameter_name  = "OutputFormatConfiguration"
+          parameter_value = "{ \"Serializer\": { \"ParquetSerDe\": { \"Compression\": \"SNAPPY\" } } }"
+        }
+      ]
+    },
+    {
+      # Step 4: Always add newline delimiter to each record
       type = "AppendDelimiterToRecord"
       parameters = [
         {
@@ -168,6 +237,8 @@ module "waf" {
   ]
 }
 ```
+
+For a complete example, see the [Advanced Processing Example](examples/advanced-processing/main.tf) included in this module.
 
 ## Usage
 
@@ -286,6 +357,68 @@ module "waf_firehose_with_timezone" {
   log_s3_error_output_prefix          = "waf-errors/"
   log_s3_error_output_prefix_timezone = "Asia/Tokyo"  # Use Tokyo timezone for error logs
 }
+```
+
+## Testing Your WAF Configuration
+
+After deploying your WAF module, it's important to test the configuration to ensure logs are being delivered correctly to your chosen destination. Here are some testing strategies:
+
+### 1. Generate Test Traffic
+
+Generate sample traffic to your application to trigger WAF logging:
+
+```bash
+# Simple curl request to trigger WAF evaluation
+curl -v https://your-application-endpoint.com/test?param1=test
+
+# Send a request that might trigger a WAF rule (e.g., SQL injection pattern)
+curl -v "https://your-application-endpoint.com/test?id=1' OR 1=1--"
+```
+
+### 2. Verify Logs in CloudWatch Logs
+
+If using CloudWatch as your logging destination:
+
+```bash
+# List the most recent log events (AWS CLI)
+aws logs get-log-events \
+  --log-group-name "/aws/waf/example-waf" \
+  --log-stream-name <log-stream-name> \
+  --limit 10
+```
+
+### 3. Verify Logs in S3
+
+If using S3 or Firehose as your logging destination:
+
+```bash
+# List objects in your logs bucket
+aws s3 ls s3://your-bucket/waf-logs/
+
+# Download and view a sample log file
+aws s3 cp s3://your-bucket/waf-logs/<log-file> ./sample-log.gz
+gunzip sample-log.gz
+cat sample-log
+```
+
+### 4. Test Firehose Processing
+
+For configurations with Firehose processing:
+
+1. Check the Firehose delivery stream in the AWS Console
+2. Verify that processed logs appear in the format you expect
+3. If using Athena integration, run test queries against the processed data:
+
+```sql
+-- Athena query example for processed WAF logs
+SELECT 
+  timestamp,
+  httpRequest.clientIp,
+  httpRequest.country,
+  httpRequest.uri,
+  action
+FROM waf_logs.waf_logs_table
+LIMIT 10;
 ```
 
 
