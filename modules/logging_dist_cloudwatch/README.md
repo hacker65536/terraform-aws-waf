@@ -44,6 +44,8 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_account_id"></a> [account\_id](#input\_account\_id) | AWS account ID | `string` | n/a | yes |
+| <a name="input_enable_kms"></a> [enable\_kms](#input\_enable\_kms) | Whether to enable KMS encryption for the CloudWatch log group | `bool` | `false` | no |
+| <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | ARN of KMS key to use for encrypting the CloudWatch log group. If not specified but enable\_kms is true, the AWS managed key will be used. | `string` | `""` | no |
 | <a name="input_log_class"></a> [log\_class](#input\_log\_class) | Log Class for CloudWatch Log Group. Valid values: STANDARD, INFREQUENT\_ACCESS | `string` | `"STANDARD"` | no |
 | <a name="input_log_retention_days"></a> [log\_retention\_days](#input\_log\_retention\_days) | Number of days to retain WAF logs in CloudWatch | `number` | `90` | no |
 | <a name="input_name"></a> [name](#input\_name) | Name of the WAF Web ACL (used for naming log group) | `string` | n/a | yes |

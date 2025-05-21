@@ -183,19 +183,20 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_enable_error_logging"></a> [enable\_error\_logging](#input\_enable\_error\_logging) | Enable CloudWatch Logs for error logging of the Firehose delivery stream | `bool` | `true` | no |
+| <a name="input_enable_kms"></a> [enable\_kms](#input\_enable\_kms) | Whether to enable KMS encryption for the Firehose delivery stream | `bool` | `false` | no |
 | <a name="input_enable_processing"></a> [enable\_processing](#input\_enable\_processing) | Enable processing configuration for Firehose delivery stream | `bool` | `true` | no |
 | <a name="input_error_log_group_name"></a> [error\_log\_group\_name](#input\_error\_log\_group\_name) | CloudWatch Log group name for Firehose error logs. If empty, 'aws-waf-logs-error-{var.name}' will be used. | `string` | `""` | no |
 | <a name="input_error_log_retention_days"></a> [error\_log\_retention\_days](#input\_error\_log\_retention\_days) | Number of days to retain Firehose error logs in CloudWatch | `number` | `14` | no |
 | <a name="input_firehose_buffer_interval"></a> [firehose\_buffer\_interval](#input\_firehose\_buffer\_interval) | Buffer interval for Firehose in seconds (60-900) | `number` | `300` | no |
 | <a name="input_firehose_buffer_size"></a> [firehose\_buffer\_size](#input\_firehose\_buffer\_size) | Buffer size for Firehose in MB (1-128) | `number` | `128` | no |
-| <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | ARN of KMS key to use for encrypting logs | `string` | `""` | no |
+| <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | ARN of KMS key to use for encrypting the Firehose delivery stream. If not specified but enable\_kms is true, the AWS managed key will be used. | `string` | `""` | no |
 | <a name="input_log_bucket_arn"></a> [log\_bucket\_arn](#input\_log\_bucket\_arn) | ARN of an existing S3 bucket to use for logs | `string` | `""` | no |
 | <a name="input_log_bucket_keys"></a> [log\_bucket\_keys](#input\_log\_bucket\_keys) | Enable KMS key access to S3 bucket for log encryption | `bool` | `false` | no |
 | <a name="input_log_s3_error_output_prefix"></a> [log\_s3\_error\_output\_prefix](#input\_log\_s3\_error\_output\_prefix) | S3 prefix for WAF error logs | `string` | `"waf-fulllog-error/"` | no |
 | <a name="input_log_s3_prefix"></a> [log\_s3\_prefix](#input\_log\_s3\_prefix) | S3 prefix for WAF logs | `string` | `"waf-fulllog/"` | no |
 | <a name="input_name"></a> [name](#input\_name) | Name of the WAF Web ACL (used for Firehose naming) | `string` | n/a | yes |
 | <a name="input_processors"></a> [processors](#input\_processors) | List of processors for Firehose delivery stream. Each processor has a type and list of parameters. Default is a simple AppendDelimiterToRecord processor. | <pre>list(object({<br/>    type = string<br/>    parameters = list(object({<br/>      parameter_name  = string<br/>      parameter_value = string<br/>    }))<br/>  }))</pre> | <pre>[<br/>  {<br/>    "parameters": [<br/>      {<br/>        "parameter_name": "Delimiter",<br/>        "parameter_value": "\\n"<br/>      }<br/>    ],<br/>    "type": "AppendDelimiterToRecord"<br/>  }<br/>]</pre> | no |
-| <a name="input_s3_bucket_arn"></a> [s3\_bucket\_arn](#input\_s3\_bucket\_arn) | ARN of the S3 bucket created in the S3 module | `string` | `""` | no |
+| <a name="input_s3_bucket_arn"></a> [s3\_bucket\_arn](#input\_s3\_bucket\_arn) | ARN of the S3 bucket created in the S3 module (used when log\_bucket\_arn is empty) | `string` | `""` | no |
 | <a name="input_s3_error_output_prefix_timezone"></a> [s3\_error\_output\_prefix\_timezone](#input\_s3\_error\_output\_prefix\_timezone) | Timezone for S3 error output prefix date formatting. Sets the custom\_time\_zone parameter for error output prefix formatting. Valid timezone values follow the IANA Time Zone Database format (e.g., 'UTC', 'America/New\_York', 'Asia/Tokyo', 'Europe/London', etc.). This affects how date patterns in the error output S3 prefix are interpreted. | `string` | `"UTC"` | no |
 | <a name="input_s3_prefix_timezone"></a> [s3\_prefix\_timezone](#input\_s3\_prefix\_timezone) | Timezone for S3 prefix date formatting. Sets the custom\_time\_zone parameter for Firehose's extended\_s3\_configuration. Valid timezone values follow the IANA Time Zone Database format (e.g., 'UTC', 'America/New\_York', 'Asia/Tokyo', 'Europe/London', etc.). This affects how date patterns in the S3 prefix are interpreted. | `string` | `"UTC"` | no |
 
