@@ -164,17 +164,6 @@ variable "cloudwatch_enable_kms" {
   description = "(Optional) If true, enables KMS encryption for CloudWatch logs. This is separate from S3/Firehose encryption."
 }
 
-variable "log_bucket_keys" {
-  type        = bool
-  default     = false
-  description = "(Optional) If true, enables KMS key access to S3 bucket for log encryption."
-}
-
-variable "kms_key_arn" {
-  type        = string
-  default     = ""
-  description = "(Optional) ARN of KMS key to use for encrypting logs."
-}
 
 variable "log_retention_days" {
   type        = number

@@ -24,12 +24,6 @@ variable "log_bucket_keys" {
   description = "Enable KMS key access to S3 bucket for log encryption"
 }
 
-variable "kms_key_arn" {
-  type        = string
-  default     = ""
-  description = "ARN of KMS key to use for encrypting logs"
-}
-
 variable "enable_kms" {
   type        = bool
   default     = false
