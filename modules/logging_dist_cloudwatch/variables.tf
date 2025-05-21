@@ -28,3 +28,15 @@ variable "log_class" {
     error_message = "Log class must be either STANDARD or INFREQUENT_ACCESS."
   }
 }
+
+variable "enable_kms" {
+  type        = bool
+  default     = false
+  description = "Whether to enable KMS encryption for the CloudWatch log group"
+}
+
+variable "kms_key_arn" {
+  type        = string
+  default     = ""
+  description = "ARN of KMS key to use for encrypting the CloudWatch log group. If not specified but enable_kms is true, the AWS managed key will be used."
+}

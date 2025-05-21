@@ -27,3 +27,17 @@ resource "aws_s3_bucket_lifecycle_configuration" "log_bucket_lifecycle" {
     }
   }
 }
+
+# Add server-side encryption configuration for the S3 bucket
+resource "aws_s3_bucket_server_side_encryption_configuration" "bucket_encryption" {
+  count  = var.enable_kms ? 1 : 0
+  bucket = aws_s3_bucket.log_bucket.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = var.kms_key_arn != "" ? "aws:kms" : "AES256"
+      kms_master_key_id = var.kms_key_arn != "" ? var.kms_key_arn : null
+    }
+    bucket_key_enabled = var.kms_key_arn != "" ? true : false
+  }
+}

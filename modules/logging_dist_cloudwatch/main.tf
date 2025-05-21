@@ -2,6 +2,7 @@ resource "aws_cloudwatch_log_group" "log_group" {
   name              = "aws-waf-logs-${var.name}"
   retention_in_days = var.log_retention_days
   log_group_class   = var.log_class
+  kms_key_id        = var.enable_kms && var.kms_key_arn != "" ? var.kms_key_arn : null
 }
 
 data "aws_iam_policy_document" "log_resource_policy" {

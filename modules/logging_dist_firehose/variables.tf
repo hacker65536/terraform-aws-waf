@@ -30,6 +30,18 @@ variable "kms_key_arn" {
   description = "ARN of KMS key to use for encrypting logs"
 }
 
+variable "enable_kms" {
+  type        = bool
+  default     = false
+  description = "Whether to enable KMS encryption for the Firehose delivery stream"
+}
+
+variable "kms_key_arn" {
+  type        = string
+  default     = ""
+  description = "ARN of KMS key to use for encrypting the Firehose delivery stream. If not specified but enable_kms is true, the AWS managed key will be used."
+}
+
 # Firehose Buffer Configuration
 variable "firehose_buffer_interval" {
   type        = number

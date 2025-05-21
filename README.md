@@ -229,6 +229,36 @@ module "waf" {
 
 For a complete example, see the [Advanced Processing Example](examples/advanced-processing/main.tf) included in this module.
 
+## KMS Encryption Support
+
+This module supports KMS encryption for WAF logs across all logging destinations:
+
+- **S3 Bucket**: Server-side encryption using KMS
+- **Firehose Stream**: Encryption in transit and at rest using KMS
+- **CloudWatch Logs**: Encryption using KMS
+
+### How to Enable KMS Encryption
+
+```hcl
+module "waf" {
+  source = "path/to/module"
+  
+  # Basic configuration
+  name   = "example-waf"
+  scope  = "REGIONAL"
+  
+  # Enable logging destination
+  logging_dist_s3 = true
+  
+  # Enable KMS encryption for S3/Firehose
+  log_bucket_keys = true
+  kms_key_arn     = "arn:aws:kms:region:account:key/key-id" # Optional
+  
+  # Enable KMS encryption for CloudWatch (if using CloudWatch logs)
+  cloudwatch_enable_kms = true
+}
+```
+
 ## Usage
 
 ### Basic Usage with Single Logging Destination

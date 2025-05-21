@@ -20,6 +20,16 @@ resource "aws_kinesis_firehose_delivery_stream" "firehose" {
   name        = "aws-waf-logs-${var.name}"
   destination = "extended_s3"
 
+  # Add server-side encryption configuration
+  dynamic "server_side_encryption" {
+    for_each = var.enable_kms ? [1] : []
+    content {
+      enabled  = true
+      key_type = var.kms_key_arn != "" ? "CUSTOMER_MANAGED_CMK" : "AWS_OWNED_CMK"
+      key_arn  = var.kms_key_arn != "" ? var.kms_key_arn : null
+    }
+  }
+
   extended_s3_configuration {
     # Base configuration
     role_arn           = aws_iam_role.firehose.arn
@@ -35,6 +45,9 @@ resource "aws_kinesis_firehose_delivery_stream" "firehose" {
     prefix              = var.log_s3_prefix
     error_output_prefix = var.log_s3_error_output_prefix
     custom_time_zone    = var.s3_prefix_timezone
+
+    # Add KMS key for S3 delivery if enabled
+    kms_key_arn = var.enable_kms && var.kms_key_arn != "" ? var.kms_key_arn : null
 
     # Configurable processing configuration
     dynamic "processing_configuration" {

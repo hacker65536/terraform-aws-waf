@@ -208,6 +208,10 @@ module "cloudwatch_logging" {
   log_class          = var.cloudwatch_log_class
   region             = data.aws_region.current.name
   account_id         = data.aws_caller_identity.current.account_id
+  
+  # Add KMS encryption settings
+  enable_kms  = var.cloudwatch_enable_kms
+  kms_key_arn = var.kms_key_arn
 }
 
 # S3 Bucket Module
@@ -223,6 +227,10 @@ module "s3_logging" {
   bucket_prefix              = var.s3_bucket_prefix
   enable_intelligent_tiering = var.enable_intelligent_tiering
   intelligent_tiering_days   = var.intelligent_tiering_days
+  
+  # Add KMS encryption settings
+  enable_kms  = var.log_bucket_keys
+  kms_key_arn = var.kms_key_arn
 }
 
 # Kinesis Firehose Module
@@ -255,6 +263,10 @@ module "firehose_logging" {
   # Firehose processing configuration
   enable_processing = var.firehose_enable_processing
   processors        = var.firehose_processors
+  
+  # Add KMS encryption settings
+  enable_kms  = var.log_bucket_keys
+  kms_key_arn = var.kms_key_arn
 }
 
 

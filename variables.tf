@@ -149,6 +149,24 @@ variable "log_s3_error_output_prefix_timezone" {
 variable "log_bucket_keys" {
   type        = bool
   default     = false
+  description = "(Optional) If true, enables KMS encryption for logs stored in S3 and Firehose. When enabled, logs are encrypted using either the specified KMS key or an AWS managed key."
+}
+
+variable "kms_key_arn" {
+  type        = string
+  default     = ""
+  description = "(Optional) ARN of KMS key to use for encrypting logs in S3, Firehose, and CloudWatch. If not specified but log_bucket_keys is true, an AWS managed key will be used."
+}
+
+variable "cloudwatch_enable_kms" {
+  type        = bool
+  default     = false
+  description = "(Optional) If true, enables KMS encryption for CloudWatch logs. This is separate from S3/Firehose encryption."
+}
+
+variable "log_bucket_keys" {
+  type        = bool
+  default     = false
   description = "(Optional) If true, enables KMS key access to S3 bucket for log encryption."
 }
 
